@@ -28,8 +28,8 @@ setup(
     packages=find_packages(),
     zip_safe=False,
     install_requires=[
-        numpy,
-        pybind11
+        'numpy',
+        'pybind11'
     ],
     author='chunyangfu',
     author_email='chunyang.fu@my.cityu.edu.hk',
