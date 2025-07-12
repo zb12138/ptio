@@ -43,11 +43,12 @@ def pcread(file_path: str, attribute=True, return_pc: bool = False) -> tuple:
         return pc
     if attribute and pc.has_colors() and pc.has_reflectance():
         return pc.points, np.hstack((pc.colors, pc.reflectance))
-    if attribute and pc.has_colors():
-        return pc.points, pc.colors
     if attribute and pc.has_reflectance():
         return pc.points, pc.reflectance
-    return pc.points
+    if attribute: # Return an empty array if attribute is true and colors is empty
+        return pc.points, pc.colors
+    else:
+        return pc.points
 
 class PointCloud:
     def __init__(self):
