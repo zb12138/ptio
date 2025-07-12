@@ -22,13 +22,15 @@ def pcwrite(file_path: str,
         pc.set_colors(colors)
     if reflectance is not None:
         pc.set_reflectance(reflectance)
-    if os.path.isdir(os.path.dirname(file_path)):
+    if os.path.dirname(file_path):
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
     pc.write(file_path, asAscii)
     return pc
 
 
-def pcread(file_path: str, attribute=True, return_pc: bool = False) -> tuple:
+def pcread(file_path: str, 
+           attribute=True, 
+           return_pc: bool = False) -> tuple:
     """
     Read point cloud data from a file.
     :param file_path: Path to the point cloud file.
