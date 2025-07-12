@@ -42,4 +42,4 @@ if __name__ == "__main__":
 Contributions are welcome! Please submit a pull request or open an issue to discuss.
 
 ## License
-This project is licensed under the BSD License. See the LICENSE file for details.
+This project is modified from G-PCC [tmc13](https://github.com/MPEGGroup/mpeg-pcc-tmc13) and licensed under the BSD License. See the LICENSE file for details.
