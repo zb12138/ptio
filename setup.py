@@ -25,7 +25,6 @@ setup(
     version='25.7.1',
     ext_modules=ext_modules,
     py_modules=['ptio'],
-    packages=find_packages(),
     zip_safe=False,
     install_requires=[
         'numpy',
