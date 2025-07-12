@@ -36,6 +36,7 @@ def pcread(file_path: str, attribute=True, return_pc: bool = False) -> tuple:
     :param return_pc: If True, return the PointCloud object.
     :return: A tuple containing points, colors, and reflectance (if requested).
     """
+    assert os.path.isfile(file_path), f"File {file_path} does not exist."
     pc = PointCloud()
     pc.read(file_path, attribute, attribute)
     if return_pc:
