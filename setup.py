@@ -29,6 +29,7 @@ setup(
     zip_safe=False,
     install_requires=[
         numpy,
+        pybind11
     ],
     author='chunyangfu',
     author_email='chunyang.fu@my.cityu.edu.hk',
