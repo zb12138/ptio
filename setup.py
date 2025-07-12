@@ -26,10 +26,8 @@ setup(
     ext_modules=ext_modules,
     py_modules=['ptio'],
     zip_safe=False,
-    install_requires=[
-        'numpy',
-        'pybind11'
-    ],
+    setup_requires=['pybind11'],
+    install_requires=['numpy'],
     author='chunyangfu',
     author_email='chunyang.fu@my.cityu.edu.hk',
     description='Fast point cloud reading and writing library',
