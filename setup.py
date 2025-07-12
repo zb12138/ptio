@@ -4,9 +4,9 @@ import pybind11
 ext_modules = [
     Extension(
         'ptio_backend',
-        ['backend.cpp',
-        'ply.cpp',
-        'table.cpp'
+        ['ptio/backend.cpp',
+        'ptio/ply.cpp',
+        'ptio/table.cpp'
         ],
         include_dirs=[pybind11.get_include(),'./ptio'],
         language='c++',
