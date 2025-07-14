@@ -1,139 +1,189 @@
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
+// ptio_backend.cpp
 #include "PCCPointSet.h"
 #include "ply.h"
+#include "backend.h"
+#include <Python.h>
+
 using namespace pcc;
 using namespace pcc::ply;
-namespace py = pybind11;
 
-class pcc_io {
-public:
-    PCCPointSet3 cloud;
+// C++实现
+pcc_io* pcc_io_create() {
+    pcc_io* obj = new pcc_io;
+    obj->cloud = new PCCPointSet3;
+    return obj;
+}
 
-    void read(const std::string &filename,double positionScale = 1.0) {
-        PropertyNameMap attributeNames;
-        attributeNames.position = {"x", "y", "z"};
-        bool success = ply::read(filename, attributeNames, positionScale, cloud);
-        if (!success) throw std::runtime_error("Failed to read PLY file.");
+void pcc_io_destroy(pcc_io* obj) {
+    if (obj) {
+        delete static_cast<PCCPointSet3*>(obj->cloud);
+        delete obj;
     }
+}
 
-    void write(const std::string &filename, double positionScale = 1.0, bool asAscii = false) {
-        PropertyNameMap attributeNames;
-        attributeNames.position = {"x", "y", "z"};
-        bool success = ply::write(cloud, attributeNames, positionScale,{0,0,0} , filename, asAscii);
-        if (!success) throw std::runtime_error("Failed to write PLY file.");
-    }
+bool pcc_io_read(pcc_io* obj, const char* filename, double positionScale) {
+    if (!obj) return false;
+    PCCPointSet3* cloud = static_cast<PCCPointSet3*>(obj->cloud);
+    PropertyNameMap attributeNames;
+    attributeNames.position = {"x", "y", "z"};
+    return ply::read(filename, attributeNames, positionScale, *cloud);
+}
 
-    py::array_t<double> get_points() {
-        size_t pointCount = cloud.getPointCount();
-        // std::cout << "Point count: " << pointCount << std::endl;
-        auto result = py::array_t<double>(pointCount * 3);
-        auto r = result.mutable_unchecked<1>();
+bool pcc_io_write(pcc_io* obj, const char* filename, double positionScale, bool asAscii) {
+    if (!obj) return false;
+    PCCPointSet3* cloud = static_cast<PCCPointSet3*>(obj->cloud);
+    PropertyNameMap attributeNames;
+    attributeNames.position = {"x", "y", "z"};
+    return ply::write(*cloud, attributeNames, positionScale, {0,0,0}, filename, asAscii);
+}
 
-        for (size_t i = 0; i < pointCount; ++i) {
-            const auto &point = cloud[i];
-            r(i * 3) = point[0];
-            r(i * 3 + 1) = point[1];
-            r(i * 3 + 2) = point[2];
-        }
-        return result;
-    }
+size_t pcc_io_get_point_count(const pcc_io* obj) {
+    if (!obj) return 0;
+    return static_cast<const PCCPointSet3*>(obj->cloud)->getPointCount();
+}
 
-    py::array_t<attr_t> get_colors() {
-        size_t pointCount = cloud.getPointCount();
-        auto result = py::array_t<attr_t>(pointCount * 3);
-        auto r = result.mutable_unchecked<1>();
-        if (cloud.hasColors()) {
-            for (size_t i = 0; i < pointCount; ++i) {
-                const Vec3<attr_t>& c = cloud.getColor(i);//GBR
-                r(i * 3 ) = c[2];
-                r(i * 3 + 1) = c[0];
-                r(i * 3 + 2) = c[1];
-            }
-        }
-        return result;
-    }
-    py::array_t<attr_t> get_reflectance() {
-        size_t pointCount = cloud.getPointCount();
-        auto result = py::array_t<attr_t>(pointCount);
-        auto r = result.mutable_unchecked<1>();
-        if (cloud.hasReflectances()) {
-            for (size_t i = 0; i < pointCount; ++i) {
-                r(i) = cloud.getReflectance(i);
-            }
-        }
-        return result;
-    }
+bool pcc_io_has_colors(const pcc_io* obj) {
+    if (!obj) return false;
+    return static_cast<const PCCPointSet3*>(obj->cloud)->hasColors();
+}
 
-    void set_points(const py::array_t<double> &points) {
-        auto p = points.unchecked<1>();
-        size_t pointCount = p.size() / 3;
-        cloud.resize(pointCount);
-        for (size_t i = 0; i < pointCount; ++i) {
-            cloud[i] = Vec3<double>(p[i * 3], p[i * 3 + 1], p[i * 3 + 2]);
-        }
-    }
+bool pcc_io_has_reflectance(const pcc_io* obj) {
+    if (!obj) return false;
+    return static_cast<const PCCPointSet3*>(obj->cloud)->hasReflectances();
+}
 
-    void set_colors(const py::array_t<attr_t> &colors) {
-        auto c = colors.unchecked<1>();
-        size_t pointCount = c.size() / 3;
-        cloud.addColors();
-        for (size_t i = 0; i < pointCount; ++i) {
-            cloud.getColor(i) = Vec3<attr_t>(c[i * 3 + 1], c[i * 3 + 2], c[i * 3]); // GBR
-        }
+bool pcc_io_get_points(const pcc_io* obj, double** points, size_t* pointCount) {
+    if (!obj || !points || !pointCount) return false;
+    
+    const PCCPointSet3* cloud = static_cast<const PCCPointSet3*>(obj->cloud);
+    *pointCount = cloud->getPointCount();
+    if (*pointCount == 0) return true;
+    
+    size_t dataSize = (*pointCount) * 3;
+    *points = new double[dataSize];
+    
+    for (size_t i = 0; i < *pointCount; ++i) {
+        const auto& point = (*cloud)[i];
+        (*points)[i * 3] = point[0];
+        (*points)[i * 3 + 1] = point[1];
+        (*points)[i * 3 + 2] = point[2];
     }
+    
+    return true;
+}
 
-    void set_reflectance(const py::array_t<attr_t> &reflectance) {
-        auto r = reflectance.unchecked<1>();
-        size_t pointCount = r.size();
-        cloud.addReflectances();
-        for (size_t i = 0; i < pointCount; ++i) {
-            cloud.getReflectance(i) = r(i);
-        }
+bool pcc_io_get_colors(const pcc_io* obj, uint8_t** colors, size_t* pointCount) {
+    if (!obj || !colors || !pointCount) return false;
+    
+    const PCCPointSet3* cloud = static_cast<const PCCPointSet3*>(obj->cloud);
+    *pointCount = cloud->getPointCount();
+    if (*pointCount == 0 || !cloud->hasColors()) return true;
+    
+    size_t dataSize = (*pointCount) * 3;
+    *colors = new uint8_t[dataSize];
+    
+    for (size_t i = 0; i < *pointCount; ++i) {
+        const Vec3<attr_t>& c = cloud->getColor(i); // GBR
+        (*colors)[i * 3] = c[2];     // R
+        (*colors)[i * 3 + 1] = c[0]; // G
+        (*colors)[i * 3 + 2] = c[1]; // B
     }
+    
+    return true;
+}
 
-    void clear() {
-        cloud.clear();
+bool pcc_io_get_reflectance(const pcc_io* obj, uint16_t** reflectance, size_t* pointCount) {
+    if (!obj || !reflectance || !pointCount) return false;
+    
+    const PCCPointSet3* cloud = static_cast<const PCCPointSet3*>(obj->cloud);
+    *pointCount = cloud->getPointCount();
+    if (*pointCount == 0 || !cloud->hasReflectances()) return true;
+    
+    *reflectance = new uint16_t[*pointCount];
+    
+    for (size_t i = 0; i < *pointCount; ++i) {
+        (*reflectance)[i] = cloud->getReflectance(i);
     }
+    
+    return true;
+}
 
-    void remove_colors() {
-        cloud.removeColors();
+bool pcc_io_set_points(pcc_io* obj, const double* points, size_t pointCount) {
+    if (!obj || !points || pointCount == 0) return false;
+    
+    PCCPointSet3* cloud = static_cast<PCCPointSet3*>(obj->cloud);
+    cloud->resize(pointCount);
+    
+    for (size_t i = 0; i < pointCount; ++i) {
+        (*cloud)[i] = Vec3<double>(points[i * 3], points[i * 3 + 1], points[i * 3 + 2]);
     }
+    
+    return true;
+}
 
-    void remove_reflectance() {
-        cloud.removeReflectances();
+bool pcc_io_set_colors(pcc_io* obj, const uint8_t* colors, size_t pointCount) {
+    if (!obj || !colors || pointCount == 0) return false;
+    
+    PCCPointSet3* cloud = static_cast<PCCPointSet3*>(obj->cloud);
+    cloud->addColors();
+    
+    for (size_t i = 0; i < pointCount; ++i) {
+        cloud->getColor(i) = Vec3<attr_t>(colors[i * 3 + 1], colors[i * 3 + 2], colors[i * 3]); // GBR
     }
+    
+    return true;
+}
 
-    //get point count
-    size_t get_point_count() const {
-        return cloud.getPointCount();
+bool pcc_io_set_reflectance(pcc_io* obj, const uint16_t* reflectance, size_t pointCount) {
+    if (!obj || !reflectance || pointCount == 0) return false;
+    
+    PCCPointSet3* cloud = static_cast<PCCPointSet3*>(obj->cloud);
+    cloud->addReflectances();
+    
+    for (size_t i = 0; i < pointCount; ++i) {
+        cloud->getReflectance(i) = reflectance[i];
     }
+    
+    return true;
+}
 
-    //has color
-    bool has_colors() const {
-        return cloud.hasColors();
-    }
-    //has reflectance
-    bool has_reflectance() const {
-        return cloud.hasReflectances();
-    }
+void pcc_io_clear(pcc_io* obj) {
+    if (!obj) return;
+    static_cast<PCCPointSet3*>(obj->cloud)->clear();
+}
+
+void pcc_io_remove_colors(pcc_io* obj) {
+    if (!obj) return;
+    static_cast<PCCPointSet3*>(obj->cloud)->removeColors();
+}
+
+void pcc_io_remove_reflectance(pcc_io* obj) {
+    if (!obj) return;
+    static_cast<PCCPointSet3*>(obj->cloud)->removeReflectances();
+}
+
+void pcc_io_free_double_array(double* arr) {
+    delete[] arr;
+}
+
+void pcc_io_free_uint8_array(uint8_t* arr) {
+    delete[] arr;
+}
+
+void pcc_io_free_uint16_array(uint16_t* arr) {
+    delete[] arr;
+}
+
+
+
+static PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT,
+    "ptio_backend",
+    NULL,
+    -1,
+    NULL, NULL, NULL, NULL, NULL
 };
 
-PYBIND11_MODULE(ptio_backend, m) {
-    py::class_<pcc_io>(m, "PCC_IO")
-        .def(py::init<>())
-        .def("read", &pcc_io::read)
-        .def("write", &pcc_io::write)
-        .def("clear", &pcc_io::clear)
-        .def("get_points", &pcc_io::get_points)
-        .def("get_colors", &pcc_io::get_colors)
-        .def("get_reflectance", &pcc_io::get_reflectance)
-        .def("set_points", &pcc_io::set_points)
-        .def("set_colors", &pcc_io::set_colors)
-        .def("set_reflectance", &pcc_io::set_reflectance)
-        .def("get_point_count", &pcc_io::get_point_count)
-        .def("has_colors", &pcc_io::has_colors)
-        .def("has_reflectance", &pcc_io::has_reflectance)
-        .def("remove_colors", &pcc_io::remove_colors)
-        .def("remove_reflectance", &pcc_io::remove_reflectance);
+PyMODINIT_FUNC PyInit_ptio_backend(void) {
+    return PyModule_Create(&moduledef);
 }

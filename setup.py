@@ -1,6 +1,4 @@
 from setuptools import setup, Extension
-import pybind11
-
 ext_modules = [
     Extension(
         'ptio_backend',
@@ -8,7 +6,6 @@ ext_modules = [
         'ply.cpp',
         'table.cpp'
         ],
-        include_dirs=[pybind11.get_include(),'./'],
         language='c++',
         extra_compile_args=[
             '-std=c++11',
@@ -22,12 +19,10 @@ ext_modules = [
 
 setup(
     name='ptio',
-    version='25.7.1',
+    version='25.7.2',
     ext_modules=ext_modules,
     py_modules=['ptio'],
     zip_safe=False,
-    setup_requires=['pybind11'],
-    install_requires=['numpy'],
     author='chunyangfu',
     author_email='chunyang.fu@my.cityu.edu.hk',
     description='Fast point cloud reading and writing library',
