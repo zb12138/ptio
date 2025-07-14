@@ -1,5 +1,6 @@
 import numpy as np
 import ctypes
+import os 
 import ptio_backend
 class PCC_IO:
     def __init__(self):
@@ -192,12 +193,17 @@ class PCC_IO:
         self.lib.pcc_io_remove_reflectance(self.obj)
 
 
-def pcwrite(file_path: str, points: np.ndarray, attribute:np.ndarray = None, colors: np.ndarray = None, reflectance: np.ndarray = None, asAscii: bool = False):
+def pcwrite(file_path: str,
+            points: np.ndarray,
+            attribute: np.ndarray = None,
+            colors: np.ndarray = None,
+            reflectance: np.ndarray = None,
+            asAscii: bool = False):
     """
     Write point cloud data to a file.
     :param file_path: Path to the output point cloud file.
     :param points: NumPy array of points (shape: [N, 3]).
-    :param attribute: Optional NumPy array of attributes (shape: [N, 1] or [N, 1]).
+    :param attribute: Optional NumPy array of attributes (shape: [N, 3] or [N, 1]).
     :param colors: Optional NumPy array of colors (shape: [N, 3]).
     :param reflectance: Optional NumPy array of reflectance values (shape: [N, 1]).
     :param asAscii: Whether to write the file in ASCII format.
@@ -215,10 +221,15 @@ def pcwrite(file_path: str, points: np.ndarray, attribute:np.ndarray = None, col
         pc.set_colors(colors)
     if reflectance is not None:
         pc.set_reflectance(reflectance)
+    if os.path.dirname(file_path):
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
     pc.write(file_path, asAscii)
-    return pc 
+    return pc
 
-def pcread(file_path: str, attribute=True, return_pc: bool = False) -> tuple:
+
+def pcread(file_path: str, 
+           attribute=True, 
+           return_pc: bool = False) -> tuple:
     """
     Read point cloud data from a file.
     :param file_path: Path to the point cloud file.
@@ -226,16 +237,20 @@ def pcread(file_path: str, attribute=True, return_pc: bool = False) -> tuple:
     :param return_pc: If True, return the PointCloud object.
     :return: A tuple containing points, colors, and reflectance (if requested).
     """
+    assert os.path.isfile(file_path), f"File {file_path} does not exist."
     pc = PointCloud()
     pc.read(file_path, attribute, attribute)
     if return_pc:
         return pc
-    if attribute and pc.has_colors():
-        return pc.points, pc.colors
+    if attribute and pc.has_colors() and pc.has_reflectance():
+        return pc.points, np.hstack((pc.colors, pc.reflectance))
     if attribute and pc.has_reflectance():
         return pc.points, pc.reflectance
-    return pc.points
-
+    if attribute: # Return an empty array if attribute is true and colors is empty
+        return pc.points, pc.colors
+    else:
+        return pc.points
+    
 class PointCloud:
     def __init__(self):
         self.points = np.empty((0, 3), dtype=np.float64)
@@ -265,7 +280,7 @@ class PointCloud:
         self._pc.write(file_path, self.positionScale, asAscii)
 
     def read_points(self):
-        self.points = self._pc.get_points() 
+        self.points = self._pc.get_points().astype(np.float64)
         return self.points
 
     def read_colors(self):
