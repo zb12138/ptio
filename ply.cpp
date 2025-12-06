@@ -124,9 +124,9 @@ ply::write(
   }
 
   if (cloud.hasColors()) {
+    fout << "property uchar red" << std::endl;
     fout << "property uchar green" << std::endl;
     fout << "property uchar blue" << std::endl;
-    fout << "property uchar red" << std::endl;
   }
   if (cloud.hasReflectances()) {
     fout << "property uint16 reflectance" << std::endl;
@@ -145,9 +145,9 @@ ply::write(
       fout << position.x() << " " << position.y() << " " << position.z();
       if (cloud.hasColors()) {
         const Vec3<attr_t>& color = cloud.getColor(i);
-        fout << " " << static_cast<int>(color[0]) << " "
-             << static_cast<int>(color[1]) << " "
-             << static_cast<int>(color[2]);
+        fout << " " << static_cast<int>(color[2]) << " "
+             << static_cast<int>(color[0]) << " "
+             << static_cast<int>(color[1]);
       }
       if (cloud.hasReflectances()) {
         fout << " " << static_cast<int>(cloud.getReflectance(i));
@@ -167,7 +167,7 @@ ply::write(
         reinterpret_cast<const char* const>(&position), sizeof(double) * 3);
       if (cloud.hasColors()) {
         const Vec3<attr_t>& c = cloud.getColor(i);
-        Vec3<uint8_t> val8b{uint8_t(c[0]), uint8_t(c[1]), uint8_t(c[2])};
+        Vec3<uint8_t> val8b{uint8_t(c[2]), uint8_t(c[0]), uint8_t(c[1])};
         fout.write(reinterpret_cast<const char*>(&val8b), sizeof(uint8_t) * 3);
       }
       if (cloud.hasReflectances()) {
@@ -272,7 +272,7 @@ ply::read(
       attributesInfo.resize(attributeIndex + 1);
       AttributeInfo& attributeInfo = attributesInfo[attributeIndex];
       attributeInfo.name = propertyName;
-      if (propertyType == "float64" || propertyType == "double") {
+      if (propertyType == "float64") {
         attributeInfo.type = ATTRIBUTE_TYPE_FLOAT64;
         attributeInfo.byteCount = 8;
       } else if (propertyType == "float" || propertyType == "float32") {
